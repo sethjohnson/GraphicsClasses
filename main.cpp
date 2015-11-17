@@ -1,3 +1,6 @@
+// This code was taken from the GLFW website for a quick example:
+// http://www.glfw.org/docs/latest/quick.html#quick_example
+
 #include <GLFW/glfw3.h>
 #include <stdlib.h>
 #include <stdio.h>
