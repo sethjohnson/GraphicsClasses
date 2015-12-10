@@ -1,18 +1,31 @@
 cmake_minimum_required (VERSION 2.8.2)
 set (CMAKE_VERBOSE_MAKEFILE TRUE)
 
-project (GLFW_App)
+project (VRClasses)
 
 if (CMAKE_INSTALL_PREFIX_INITIALIZED_TO_DEFAULT)
     set (CMAKE_INSTALL_PREFIX "${${PROJECT_NAME}_SOURCE_DIR}/build/install" CACHE PATH "default install path" FORCE )
 endif()
 
 set (SOURCEFILES 
-  main.cpp
+  source/main.cpp
+  source/Shader.cpp
+  source/ShaderProgram.cpp
+  source/RawData.cpp
+  source/GeometryArray.cpp
+  source/AttributeArray.cpp
+  source/WindowManager.cpp
+  source/WindowManager_GLFW.cpp
 )
 
 set (HEADERFILES
-
+  include/Shader.h
+  include/ShaderProgram.h
+  include/RawData.h
+  include/GeometryArray.h
+  include/AttributeArray.h
+  include/WindowManager.h
+  include/WindowManager_GLFW.h
 )
 
 source_group("Header Files" FILES ${HEADERFILES})
@@ -56,13 +69,18 @@ if(MSVC)
 else()
 	set(GLFW_LIBRARY ${glfw_INSTALL_DIR}/lib/libglfw3.a CACHE INTERNAL "GLFW lib file")
 endif()	
-include_directories(${GLFW_INCLUDE_DIR})
+include_directories(${GLFW_INCLUDE_DIR} )
 
 # OpenGL
 find_package(OpenGL REQUIRED)
 set(OPENGL_LIBRARIES ${OPENGL_gl_LIBRARY} ${OPENGL_glu_LIBRARY})
 set(OPENGL_INCLUDE_DIRS ${OPENGL_INCLUDE_DIR})
 include_directories(${OPENGL_INCLUDE_DIRS})
+
+# GLEW
+add_definitions(-DGLEW_STATIC)
+add_subdirectory(lib/glew)
+include_directories(lib/glew/include)
 
 #------------------------------------------
 # Include Directories
@@ -72,6 +90,7 @@ include_directories(${OPENGL_INCLUDE_DIRS})
 # Include Directories
 include_directories (
   .
+  include
 )
 
 # Windows Section #
@@ -131,9 +150,9 @@ endif()
 # Build Target
 add_executable ( ${PROJECT_NAME} ${HEADERFILES} ${SOURCEFILES} )
 
-target_link_libraries(${PROJECT_NAME} ${GLFW_LIBRARY} ${OPENGL_LIBRARIES} ${LIBS_ALL})
-add_dependencies( ${PROJECT_NAME} glfw)
+target_link_libraries(${PROJECT_NAME} ${GLFW_LIBRARY} glew ${OPENGL_LIBRARIES} ${LIBS_ALL})
 
+add_dependencies( ${PROJECT_NAME} glfw glew)
 #install(DIRECTORY ${PROJECT_NAME}/include/ DESTINATION include)
 
 install( TARGETS ${PROJECT_NAME}
