@@ -1,25 +1,10 @@
-# BaseGLFW
+# GraphicsClasses
 
-This is an example GLFW application which downloads GLFW and runs a demo program.
+This is an example GLFW application which abstracts out the windowing framework and adds some wrapper classes around basic openGL functionality.
 
 ### Build and Install
 
 Build the project:
   ```
   make
-  # build release
-  make opt
-  # build debug
-  make debug
   ```
-
-Install the project:
-  ```
-  make install
-  ```
-
-Run the program:
-  ```
-  ./build/Release/GLFW_App
-  ```
-
