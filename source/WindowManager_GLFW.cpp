@@ -2,7 +2,7 @@
 #include <GLFW/glfw3.h>
 #include <iostream>
 
-bool WindowManagerGLFW::initWindow()
+bool WindowManagerGLFW::initWindow(char *title, int width, int height)
 {
     if (!glfwInit ()) {
         fprintf (stderr, "ERROR: could not start GLFW3\n");
@@ -15,7 +15,7 @@ bool WindowManagerGLFW::initWindow()
     glfwWindowHint (GLFW_OPENGL_FORWARD_COMPAT, GL_TRUE);
     glfwWindowHint (GLFW_OPENGL_PROFILE, GLFW_OPENGL_CORE_PROFILE);
     
-    window = glfwCreateWindow (640, 480, "Hello Triangle", NULL, NULL);
+    window = glfwCreateWindow (width,height, title, NULL, NULL);
     if (!window) {
         fprintf (stderr, "ERROR: could not open window with GLFW3\n");
         glfwTerminate();

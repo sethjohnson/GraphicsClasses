@@ -8,6 +8,31 @@
 #include <string>
 class ShaderType;
 
+struct vec2
+{
+    float x;
+    float y;
+};
+
+struct vec3
+{
+    float x;
+    float y;
+    float z;
+};
+
+struct vec4
+{
+    float x;
+    float y;
+    float z;
+    float w;
+};
+struct mat4
+{
+    vec4 cols[4];
+};
+
 typedef std::shared_ptr<GLuint> ContextPtr;
 typedef std::shared_ptr<ShaderType> Shader;
 

@@ -6,7 +6,7 @@ class WindowManagerGLFW : public WindowManager {
     GLFWwindow* window;
     
 public:
-    virtual bool initWindow();
+    virtual bool initWindow(char *title, int width, int height);
     virtual bool shouldClose();
     virtual void swapBuffers();
     virtual void checkEvents();

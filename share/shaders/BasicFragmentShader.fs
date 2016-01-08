@@ -1,7 +1,7 @@
 #version 330
-out vec4 frag_colour;
+layout(location = 0) out vec4 color;
 in vec4 fColor;
 
 void main () {
-	frag_colour = fColor;
+	color = fColor;
 }

@@ -15,9 +15,7 @@
 #include "AttributeArray.h"
 #include <utility>
 
-struct vec3 {
-    GLfloat x[3];
-};
+
 typedef std::shared_ptr<GLuint> ContextPtr;
 
 
