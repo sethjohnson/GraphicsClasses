@@ -70,6 +70,7 @@ else()
 	set(GLFW_LIBRARY ${glfw_INSTALL_DIR}/lib/libglfw3.a CACHE INTERNAL "GLFW lib file")
 endif()	
 include_directories(${GLFW_INCLUDE_DIR} )
+include_directories("/usr/local/include")
 
 # OpenGL
 find_package(OpenGL REQUIRED)
@@ -81,6 +82,87 @@ include_directories(${OPENGL_INCLUDE_DIRS})
 add_definitions(-DGLEW_STATIC)
 add_subdirectory(lib/glew)
 include_directories(lib/glew/include)
+
+
+#------------------------------------------
+# Download dependencies 2
+#------------------------------------------
+set(assimp_checkout_Dir ${CMAKE_SOURCE_DIR}/dependencies/assimp)
+make_directory(${assimp_checkout_Dir})
+
+set(soil_dl_Dir ${CMAKE_SOURCE_DIR}/dependencies/SOIL)
+make_directory(${soil_dl_Dir})
+
+include(ExternalProject)
+
+set(assimp_PREFIX "${assimp_checkout_Dir}")
+set(assimp_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/assimp")
+
+set(soil_PREFIX "${soil_dl_Dir}")
+set(soil_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/SOIL")
+
+set(assimp_CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${assimp_INSTALL_DIR} -DBUILD_SHARED_LIBS=OFF -DASSIMP_BUILD_ASSIMP_TOOLS=OFF -DASSIMP_BUILD_SAMPLES=OFF -DASSIMP_ENABLE_BOOST_WORKAROUND=ON -DASSIMP_BUILD_TESTS=OFF )
+set(assimp_DIR "${assimp_INSTALL_DIR}")
+set(soil_DIR "${soil_INSTALL_DIR}")
+
+    if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
+    set(assimp_CMAKE_ARGS ${assimp_CMAKE_ARGS} -DCMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LANGUAGE_STANDARD=c++11 -DCMAKE_XCODE_ATTRIBUTE_CLANG_CXX_LIBRARY=libc++)
+    endif()
+
+    if (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+    set(GIT_EXECUTABLE "C:/Program Files (x86)/Git/bin/git.exe")
+    endif (${CMAKE_SYSTEM_NAME} MATCHES "Windows")
+
+ExternalProject_add(assimp
+PREFIX ${assimp_PREFIX}
+GIT_REPOSITORY https://github.com/ivlab/assimp.git
+GIT_TAG master
+INSTALL_DIR ${assimp_INSTALL_DIR}
+CMAKE_ARGS ${assimp_CMAKE_ARGS}
+UPDATE_COMMAND ""
+)
+
+set_property(TARGET assimp PROPERTY FOLDER "Dependencies")
+
+set(soil_PATCH ${CMAKE_COMMAND} -E copy ${soil_PREFIX}/CMakeLists.txt <SOURCE_DIR>/CMakeLists.txt)
+set(soil_CMAKE_ARGS "-DCMAKE_INSTALL_PREFIX=${soil_INSTALL_DIR}")
+
+ExternalProject_add(SOIL
+PREFIX ${soil_PREFIX}
+URL http://www.lonesock.net/files/soil.zip
+INSTALL_DIR ${soil_INSTALL_DIR}
+CMAKE_ARGS ${soil_CMAKE_ARGS}
+PATCH_COMMAND ${soil_PATCH}
+UPDATE_COMMAND ""
+)
+
+set_property(TARGET SOIL PROPERTY FOLDER "Dependencies")
+
+
+#find_package(ZLIB)
+#INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
+
+set(ASSIMP_INCLUDE_DIR ${assimp_INSTALL_DIR}/include CACHE INTERNAL "Directory of assimp header files")
+set(SOIL_INCLUDE_DIR ${soil_INSTALL_DIR}/include CACHE INTERNAL "Directory of SOIL header files")
+if(MSVC)
+set(ASSIMP_LIBRARY debug ${assimp_INSTALL_DIR}/lib/assimpd.lib optimized ${assimp_INSTALL_DIR}/lib/assimp.lib CACHE INTERNAL "assimp lib file")
+set(SOIL_LIBRARY ${soil_INSTALL_DIR}/lib/SOIL.lib CACHE INTERNAL "SOIL lib file")
+else()
+set(ASSIMP_LIBRARY ${assimp_INSTALL_DIR}/lib/libassimp.a CACHE INTERNAL "assimp lib file")
+set(SOIL_LIBRARY ${soil_INSTALL_DIR}/lib/libSOIL.a CACHE INTERNAL "SOIL lib file")
+endif()
+find_package(ZLIB)
+if( NOT ZLIB_FOUND )
+ExternalProject_Get_Property(assimp binary_dir)
+include_directories(${binary_dir}/contrib/zlib)
+#set(ZLIB_LIBRARIES optimized ${binary_dir}/contrib/zlib/Release/zlibstatic.lib debug ${binary_dir}/contrib/zlib/Debug/zlibstaticd.lib)
+set(ZLIB_LIBRARIES ${binary_dir}/contrib/zlib/Debug/zlibstaticd.lib)
+message(sdf ${binary_dir})
+endif(NOT ZLIB_FOUND)
+set(LIBASSIMP_LIBRARIES ${ASSIMP_LIBRARY} ${ZLIB_LIBRARIES})
+
+include_directories(${ASSIMP_INCLUDE_DIR})
+include_directories(${SOIL_INCLUDE_DIR})
 
 #------------------------------------------
 # Include Directories
@@ -150,9 +232,9 @@ endif()
 # Build Target
 add_executable ( ${PROJECT_NAME} ${HEADERFILES} ${SOURCEFILES} )
 
-target_link_libraries(${PROJECT_NAME} ${GLFW_LIBRARY} glew ${OPENGL_LIBRARIES} ${LIBS_ALL})
+target_link_libraries(${PROJECT_NAME} ${LIBASSIMP_LIBRARIES} ${SOIL_LIBRARY} ${GLFW_LIBRARY} glew ${OPENGL_LIBRARIES} ${LIBS_ALL})
 
-add_dependencies( ${PROJECT_NAME} glfw glew)
+add_dependencies( ${PROJECT_NAME} glfw glew assimp SOIL)
 #install(DIRECTORY ${PROJECT_NAME}/include/ DESTINATION include)
 
 install( TARGETS ${PROJECT_NAME}

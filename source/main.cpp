@@ -16,9 +16,19 @@
 #include <GLFW/glfw3.h>
 
 
+#include <assimp/Importer.hpp>
+#include <assimp/scene.h>
+#include <assimp/postprocess.h>
+// assimp include files. These three are usually needed.
+//#include <assimp/Importer.hpp>	//OO version Header!
+//#include <assimp/PostProcess.h>
+//#include <assimp/Scene.h>
+
 GeometryArray triangle;
 GeometryArray quad;
 GeometryArray cube;
+GeometryArray shape;
+
 int g_key;
 
 static void
@@ -41,6 +51,118 @@ mousebutton_callback(GLFWwindow* window, int button, int action, int mods) {
     mouse_button = action;
 }
 
+void loadModel(std::string path)
+{
+//    std::vector<MeshRef> meshes;
+    
+    Assimp::Importer importer;
+    const aiScene *scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
+    
+    if(!scene || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
+    {
+        std::cout << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
+//        return meshes;
+    }
+    
+    std::cout << scene->mNumMeshes << std::endl;
+    
+    for (int meshNum = 0; meshNum < scene->mNumMeshes; meshNum++)
+    {
+        aiMesh *mesh = scene->mMeshes[meshNum];
+        
+        
+        std::vector<glm::vec3> vertices;
+        std::vector<glm::vec3> normals;
+        
+        std::vector<glm::vec2> texCoords;
+        
+        bool hasTexCoords = mesh->mTextureCoords[0];
+        
+        for (int i = 0; i < mesh->mNumVertices; i++) {
+            glm::vec3 vert;
+            vert.x = mesh->mVertices[i].x;
+            vert.y = mesh->mVertices[i].y;
+            vert.z = mesh->mVertices[i].z;
+            vertices.push_back(vert);
+            
+            if (mesh->HasNormals())
+            {
+                glm::vec3 norm;
+                norm.x = mesh->mNormals[i].x;
+                norm.y = mesh->mNormals[i].y;
+                norm.z = mesh->mNormals[i].z;
+                normals.push_back(norm);
+            }
+            
+            if (hasTexCoords)
+            {
+                texCoords.push_back(glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y));
+            }
+        }
+        
+        std::vector<unsigned int> indices;
+        for(int i = 0; i < mesh->mNumFaces; i++)
+        {
+            aiFace face = mesh->mFaces[i];
+            // Retrieve all indices of the face and store them in the indices vector
+            for(int j = 0; j < face.mNumIndices; j++)
+                indices.push_back(face.mIndices[j]);
+        }
+        
+        std::string directory = "";
+        int lastFolderIndex = path.find_last_of('/');
+        if (lastFolderIndex < 0)
+        {
+            lastFolderIndex = path.find_last_of('\\');
+        }
+        
+        if (lastFolderIndex >= 0)
+        {
+            directory = path.substr(0, lastFolderIndex+1);
+        }
+        
+        shape.addIndex(indices, "shape");
+        shape.addAttribute(vertices, ATTRIB_POSITION, 3, TYPE_FLOAT);
+
+        if (mesh->HasNormals())
+        {
+            shape.addAttribute(normals, ATTRIB_NORMAL, 3, TYPE_FLOAT);
+
+        }
+
+        
+        if (hasTexCoords)
+        {
+            shape.addAttribute(texCoords, ATTRIB_TEXCOORD, 2, TYPE_FLOAT);
+        }
+        
+        shape.generateObjects();
+        
+        shape.bind();
+        
+
+        shape.loadAttributes();
+        shape.loadIndices();
+        
+        shape.bind();
+//        if (mesh->mMaterialIndex >= 0)
+//        {
+//            aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
+//            int texCount = material->GetTextureCount(aiTextureType_DIFFUSE);
+//            std::cout << texCount << " count" << std::endl;
+//            if (texCount > 0)
+//            {
+//                aiString str;
+//                material->GetTexture(aiTextureType_DIFFUSE, 0, &str);
+//                std::cout << std::string(str.C_Str()) << std::endl;
+//                finalMesh->setTexture(TextureRef(new SOILTexture(directory + std::string(str.C_Str()))));
+//            }
+//        }
+//        
+//        meshes.push_back(finalMesh);
+    }
+
+}
 
 int main () {
     // start GL context and O/S window using the GLFW helper library
@@ -267,7 +389,7 @@ int main () {
     cube.bind();
     
     
-    
+    loadModel("/Users/sethjohnson/Desktop/monkey.obj");
     
     std::map<std::string, Shader> shaders;
     
@@ -285,35 +407,36 @@ int main () {
     shaders["XYZMap.fs"] = ShaderType::CreateShaderFromFile("share/shaders/MeshXYZMap.fs", GL_FRAGMENT_SHADER);
     
     
-    for (auto &s : shaders) {
+    for (auto &s : shaders)
         s.second->compile();
-    }
     
     
-    ShaderProgram * prgrm = new ShaderProgram();
-    prgrm->addShader(shaders["BasicVertexShader.vs"]);
-    prgrm->addShader(shaders["BasicVertexShader.fs"]);
-    prgrm->link();
+    std::map<std::string, ShaderProgram*> shaderPrograms;
     
-    ShaderProgram * texprgm = new ShaderProgram();
-    texprgm->addShader(shaders["TextureQuad.vs"]);
-    texprgm->addShader(shaders["TextureQuad.fs"]);
-    texprgm->link();
+    shaderPrograms["BasicVertexShader"] = new ShaderProgram();
+    shaderPrograms["BasicVertexShader"]->addShader(shaders["BasicVertexShader.vs"]);
+    shaderPrograms["BasicVertexShader"]->addShader(shaders["BasicVertexShader.fs"]);
     
-    ShaderProgram * mapProgram = new ShaderProgram();
-    mapProgram->addShader(shaders["XYZMap.vs"]);
-    mapProgram->addShader(shaders["XYZMap.fs"]);
-    mapProgram->link();
+    shaderPrograms["TexureQuad"] = new ShaderProgram();
+    shaderPrograms["TexureQuad"]->addShader(shaders["TextureQuad.vs"]);
+    shaderPrograms["TexureQuad"]->addShader(shaders["TextureQuad.fs"]);
     
-    ShaderProgram * volumeProgram = new ShaderProgram();
-    volumeProgram->addShader(shaders["TextureQuad.vs"]);
-    volumeProgram->addShader(shaders["Volume.fs"]);
-    volumeProgram->link();
+    shaderPrograms["XYZMap"] = new ShaderProgram();
+    shaderPrograms["XYZMap"]->addShader(shaders["XYZMap.vs"]);
+    shaderPrograms["XYZMap"]->addShader(shaders["XYZMap.fs"]);
     
-    ShaderProgram * compositeProgram = new ShaderProgram();
-    compositeProgram->addShader(shaders["TextureQuad.vs"]);
-    compositeProgram->addShader(shaders["Blend.fs"]);
-    compositeProgram->link();
+    shaderPrograms["Volume"] = new ShaderProgram();
+    shaderPrograms["Volume"]->addShader(shaders["TextureQuad.vs"]);
+    shaderPrograms["Volume"]->addShader(shaders["Volume.fs"]);
+    
+    shaderPrograms["Composite"] = new ShaderProgram();
+    shaderPrograms["Composite"]->addShader(shaders["TextureQuad.vs"]);
+    shaderPrograms["Composite"]->addShader(shaders["Blend.fs"]);
+    
+    
+    for (auto &s : shaderPrograms)
+        s.second->link();
+    
     
     GLint dims[4] = {0};
     glGetIntegerv(GL_VIEWPORT, dims);
@@ -324,135 +447,50 @@ int main () {
     GLint renderHeight = fbHeight*2;
     
     
-    
-    
-    
-    GLuint BackSideBuffer = 0;
-    glGenFramebuffers(1, &BackSideBuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, BackSideBuffer);
-    // The texture we're going to render to
-    GLuint BackSideTexture;
-    glGenTextures(1, &BackSideTexture);
-    
-    // "Bind" the newly created texture : all future texture functions will modify this texture
-    glBindTexture(GL_TEXTURE_2D, BackSideTexture);
-    
-    // Give an empty image to OpenGL ( the last "0" )
-    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA32F, renderWidth, renderHeight, 0,GL_RGBA, GL_FLOAT, 0);
-    
-    // Poor filtering. Needed !
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    // The depth buffer
+    std::map<std::string, GLuint> buffers;
+    std::map<std::string, GLuint> buffertextures;
+
     GLuint depthrenderbuffer;
     glGenRenderbuffers(1, &depthrenderbuffer);
     glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
     glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, renderWidth, renderHeight);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
-    
-    GLuint FrontSideBuffer = 0;
-    glGenFramebuffers(1, &FrontSideBuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, FrontSideBuffer);
-    // The texture we're going to render to
-    GLuint FrontSideTexture;
-    glGenTextures(1, &FrontSideTexture);
-    
-    // "Bind" the newly created texture : all future texture functions will modify this texture
-    glBindTexture(GL_TEXTURE_2D, FrontSideTexture);
-    
-    // Give an empty image to OpenGL ( the last "0" )
-    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA32F, renderWidth, renderHeight, 0,GL_RGBA, GL_FLOAT, 0);
-    
-    // Poor filtering. Needed !
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    // The depth buffer
-    //    GLuint depthrenderbuffer;
-    glGenRenderbuffers(1, &depthrenderbuffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, renderWidth, renderHeight);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
     
     
+    buffers["BackSide"] = 0;
     
+    buffers["FrontSide"] = 0;
     
-    
-    GLuint BackgroundBuffer = 0;
-    glGenFramebuffers(1, &BackgroundBuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, BackgroundBuffer);
-    // The texture we're going to render to
-    GLuint BackgroundTexture;
-    glGenTextures(1, &BackgroundTexture);
-    
-    // "Bind" the newly created texture : all future texture functions will modify this texture
-    glBindTexture(GL_TEXTURE_2D, BackgroundTexture);
-    
-    // Give an empty image to OpenGL ( the last "0" )
-    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA32F, renderWidth, renderHeight, 0,GL_RGBA, GL_FLOAT, 0);
-    
-    // Poor filtering. Needed !
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    // The depth buffer
-    //    GLuint depthrenderbuffer;
-    glGenRenderbuffers(1, &depthrenderbuffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, renderWidth, renderHeight);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
+    buffers["Background"] = 0;
 
+    buffers["Volume"] = 0;
     
+    buffers["Composite"] = 0;
     
-    
-    GLuint VolumeBuffer = 0;
-    glGenFramebuffers(1, &VolumeBuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, VolumeBuffer);
-    // The texture we're going to render to
-    GLuint VolumeRenderTexture;
-    glGenTextures(1, &VolumeRenderTexture);
-    
-    // "Bind" the newly created texture : all future texture functions will modify this texture
-    glBindTexture(GL_TEXTURE_2D, VolumeRenderTexture);
-    
-    // Give an empty image to OpenGL ( the last "0" )
-    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA32F, renderWidth, renderHeight, 0,GL_RGBA, GL_FLOAT, 0);
-    
-    // Poor filtering. Needed !
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    // The depth buffer
-    //    GLuint depthrenderbuffer;
-    glGenRenderbuffers(1, &depthrenderbuffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, renderWidth, renderHeight);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
+    for (auto &b : buffers)
+    {
+        glGenFramebuffers(1, &b.second);
+        glBindFramebuffer(GL_FRAMEBUFFER, b.second);
+        // The texture we're going to render to
+        buffertextures[b.first];
+        glGenTextures(1, &buffertextures[b.first]);
+        
+        // "Bind" the newly created texture : all future texture functions will modify this texture
+        glBindTexture(GL_TEXTURE_2D, buffertextures[b.first]);
+        
+        // Give an empty image to OpenGL ( the last "0" )
+        glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA32F, renderWidth, renderHeight, 0,GL_RGBA, GL_FLOAT, 0);
+        
+        // Poor filtering. Needed !
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        // The depth buffer
+        //    GLuint depthrenderbuffer;
+        
+        
+        glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
+        
 
-    
-    
-    
-    GLuint CompositeBuffer = 0;
-    glGenFramebuffers(1, &CompositeBuffer);
-    glBindFramebuffer(GL_FRAMEBUFFER, CompositeBuffer);
-    // The texture we're going to render to
-    GLuint CompositeTexture;
-    glGenTextures(1, &CompositeTexture);
-    
-    // "Bind" the newly created texture : all future texture functions will modify this texture
-    glBindTexture(GL_TEXTURE_2D, CompositeTexture);
-    
-    // Give an empty image to OpenGL ( the last "0" )
-    glTexImage2D(GL_TEXTURE_2D, 0,GL_RGBA32F, renderWidth, renderHeight, 0,GL_RGBA, GL_FLOAT, 0);
-    
-    // Poor filtering. Needed !
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
-    glTexParameteri(GL_TEXTURE_2D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
-    // The depth buffer
-    //    GLuint depthrenderbuffer;
-    glGenRenderbuffers(1, &depthrenderbuffer);
-    glBindRenderbuffer(GL_RENDERBUFFER, depthrenderbuffer);
-    glRenderbufferStorage(GL_RENDERBUFFER, GL_DEPTH_COMPONENT, renderWidth, renderHeight);
-    glFramebufferRenderbuffer(GL_FRAMEBUFFER, GL_DEPTH_ATTACHMENT, GL_RENDERBUFFER, depthrenderbuffer);
-
-    
+    }
     
     
     
@@ -501,13 +539,13 @@ int main () {
     
     
     
-    glBindFramebuffer(GL_FRAMEBUFFER, BackSideBuffer);
+    glBindFramebuffer(GL_FRAMEBUFFER, buffers["BackSide"]);
     
     
     
     
     // Set "renderedTexture" as our colour attachement #0
-    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, BackSideTexture, 0);
+    glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, buffertextures["BackSide"], 0);
     
     // Set the list of draw buffers.
     GLenum DrawBuffers[1] = {GL_COLOR_ATTACHMENT0};
@@ -568,23 +606,23 @@ int main () {
 
         glEnable(GL_CULL_FACE);
         glCullFace(GL_FRONT);
-        mapProgram->use();
-        mapProgram->setUniform("projectionMatrix",*(mat4*)glm::value_ptr(glm::perspectiveFov((float)M_PI_4, 800.f, 800.f, 0.1f, 100.f)));
-        mapProgram->setUniform("viewMatrix",*(mat4*)glm::value_ptr(glm::lookAt(
+        shaderPrograms["XYZMap"]->use();
+        shaderPrograms["XYZMap"]->setUniform("projectionMatrix",*(mat4*)glm::value_ptr(glm::perspectiveFov((float)M_PI_4, 800.f, 800.f, 0.1f, 100.f)));
+        shaderPrograms["XYZMap"]->setUniform("viewMatrix",*(mat4*)glm::value_ptr(glm::lookAt(
                                                                                camera_pos.xyz(), //Cam Position
                                                                                glm::vec3(0,0,0),  //Look at point
                                                                                glm::vec3(0.0f, 1.0f, 0.0f)))); //Up)));
-        mapProgram->setUniform("modelMatrix",*(mat4*)&volumeTrans);
-        mapProgram->setUniform("volumeModelMatrix",*(mat4*)& volumeTransInv);
+        shaderPrograms["XYZMap"]->setUniform("modelMatrix",*(mat4*)&volumeTrans);
+        shaderPrograms["XYZMap"]->setUniform("volumeModelMatrix",*(mat4*)& volumeTransInv);
         
         // Render to our framebuffer
         glViewport(0,0,renderWidth,renderHeight); // Render on the whole framebuffer, complete from the lower left corner to the upper right
         
         cube.bind();
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, BackSideTexture, 0);
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, buffertextures["BackSide"], 0);
         
-        glBindFramebuffer(GL_FRAMEBUFFER, BackSideBuffer);
-        glClearColor(0, 0, 0, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, buffers["BackSide"]);
+        glClearColor(1, 0, 0, 0);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
@@ -594,74 +632,75 @@ int main () {
 
         
         glm::mat4 triTrans = glm::translate( glm::vec3(0.0f,0.0f,0.0f));
-        triTrans = glm::scale(triTrans, glm::vec3(1.5,1.5,1.5));
+        triTrans = glm::scale(triTrans, glm::vec3(0.7,0.7,0.7));
         triTrans = glm::rotate(triTrans,3.0f, glm::vec3(1,1,1));
 
         triTrans = glm::translate(triTrans, glm::vec3(0,0,0));
         
         
-        mapProgram->setUniform("modelMatrix",*(mat4*)glm::value_ptr(triTrans));
-        triangle.bind();
+        shaderPrograms["XYZMap"]->setUniform("modelMatrix",*(mat4*)glm::value_ptr(triTrans));
+        shape.bind();
+        glDrawElements(GL_TRIANGLES, shape.getCountForIndex("shape"), GL_UNSIGNED_INT, (void*)shape.getStartForIndex("shape"));
         
-        glDrawElements(GL_TRIANGLES, triangle.getCountForIndex("tri"), GL_UNSIGNED_INT, (void*)triangle.getStartForIndex("tri"));
+
         
         
-        glBindFramebuffer(GL_FRAMEBUFFER, FrontSideBuffer);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, FrontSideTexture, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, buffers["FrontSide"]);
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, buffertextures["FrontSide"], 0);
         
         glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
         
         
         cube.bind();
         
-        mapProgram->setUniform("modelMatrix",*(mat4*)&volumeTrans);
+        shaderPrograms["XYZMap"]->setUniform("modelMatrix",*(mat4*)&volumeTrans);
         glCullFace(GL_BACK);
-        glClearColor(0, 0, 0, 0);
+        glClearColor(1, 0, 0, 0);
 
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        
+
         glDrawElements(GL_TRIANGLES, cube.getCountForIndex("cube"), GL_UNSIGNED_INT, (void*)cube.getStartForIndex("cube"));
         
         
         
         glDisable(GL_CULL_FACE);
-        prgrm->use();
-        prgrm->setUniform("projectionMatrix",*(mat4*)glm::value_ptr(glm::perspectiveFov((float)M_PI_4, 800.f, 800.f, 0.1f, 100.f)));
-        prgrm->setUniform("viewMatrix",*(mat4*)glm::value_ptr(glm::lookAt(
+        shaderPrograms["BasicVertexShader"]->use();
+        shaderPrograms["BasicVertexShader"]->setUniform("projectionMatrix",*(mat4*)glm::value_ptr(glm::perspectiveFov((float)M_PI_4, 800.f, 800.f, 0.1f, 100.f)));
+        shaderPrograms["BasicVertexShader"]->setUniform("viewMatrix",*(mat4*)glm::value_ptr(glm::lookAt(
                                                                           camera_pos.xyz(), //Cam Position
                                                                           glm::vec3(0,0,0),  //Look at point
                                                                           glm::vec3(0.0f, 1.0f, 0.0f)))); //Up)));
-        prgrm->setUniform("modelMatrix",*(mat4*)&triTrans);
-        glBindFramebuffer(GL_FRAMEBUFFER, BackgroundBuffer);
+        shaderPrograms["BasicVertexShader"]->setUniform("modelMatrix",*(mat4*)&triTrans);
+        glBindFramebuffer(GL_FRAMEBUFFER, buffers["Background"]);
 
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, BackgroundTexture, 0);
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, buffertextures["Background"], 0);
         
 
         glClearColor(0.45, 0.50, 0.6, 1);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        triangle.bind();
-        glDrawElements(GL_TRIANGLES, triangle.getCountForIndex("tri"), GL_UNSIGNED_INT, (void*)triangle.getStartForIndex("tri"));
+        shape.bind();
+        glDrawElements(GL_TRIANGLES, shape.getCountForIndex("shape"), GL_UNSIGNED_INT, (void*)shape.getStartForIndex("shape"));
 
 
         
-        volumeProgram->use();
+        shaderPrograms["Volume"]->use();
   
-        glBindFramebuffer(GL_FRAMEBUFFER, VolumeBuffer);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, VolumeRenderTexture, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, buffers["Volume"]);
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, buffertextures["Volume"], 0);
 
         glViewport(0,0,renderWidth,renderHeight); // Render on the whole framebuffer, complete from the lower left corner to the upper right
         quad.bind();
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, BackSideTexture);
-        volumeProgram->setUniform("BackMap", 0);
+        glBindTexture(GL_TEXTURE_2D, buffertextures["BackSide"]);
+        shaderPrograms["Volume"]->setUniform("BackMap", 0);
         
         glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, FrontSideTexture);
-        volumeProgram->setUniform("FrontMap", 1);
+        glBindTexture(GL_TEXTURE_2D, buffertextures["FrontSide"]);
+        shaderPrograms["Volume"]->setUniform("FrontMap", 1);
         
         glActiveTexture(GL_TEXTURE2);
         glBindTexture(GL_TEXTURE_3D, VolumeTexture);
-        volumeProgram->setUniform("VolumeMap", 2);
+        shaderPrograms["Volume"]->setUniform("VolumeMap", 2);
         
         glClearColor(0, 0, 0, 1);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
@@ -670,82 +709,63 @@ int main () {
         
         
         
-        compositeProgram->use();
+        shaderPrograms["Composite"]->use();
         
-        glBindFramebuffer(GL_FRAMEBUFFER, CompositeBuffer);
-        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, CompositeTexture, 0);
+        glBindFramebuffer(GL_FRAMEBUFFER, buffers["Composite"]);
+        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, buffertextures["Composite"], 0);
         
         glViewport(0,0,renderWidth,renderHeight); // Render on the whole framebuffer, complete from the lower left corner to the upper right
         quad.bind();
         glActiveTexture(GL_TEXTURE0);
-        glBindTexture(GL_TEXTURE_2D, BackgroundTexture);
-        compositeProgram->setUniform("texBackground", 0);
+        glBindTexture(GL_TEXTURE_2D, buffertextures["Background"]);
+        shaderPrograms["Composite"]->setUniform("texBackground", 0);
         
         glActiveTexture(GL_TEXTURE1);
-        glBindTexture(GL_TEXTURE_2D, VolumeRenderTexture);
-        compositeProgram->setUniform("texForeground", 1);
+        glBindTexture(GL_TEXTURE_2D, buffertextures["Volume"]);
+        shaderPrograms["Composite"]->setUniform("texForeground", 1);
 
-        glClearColor(0, 0, 0, 1);
+        glClearColor(1, 0, 0, 1);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         glDrawElements(GL_TRIANGLES, quad.getCountForIndex("quad"), GL_UNSIGNED_INT, (void*)quad.getStartForIndex("quad"));
 
-        
-//        compositeProgram->use();
-//        
-//        glBindFramebuffer(GL_FRAMEBUFFER, CompositeBuffer);
-//        glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, CompositeTexture, 0);
-//        
-//        glViewport(0,0,fbWidth,fbHeight); // Render on the whole framebuffer, complete from the lower left corner to the upper right
-//        quad.bind();
-//        glActiveTexture(GL_TEXTURE0);
-//        glBindTexture(GL_TEXTURE_2D, CompositeTexture);
-//        compositeProgram->setUniform("texBackground", 0);
-//        
-//        glActiveTexture(GL_TEXTURE1);
-//        glBindTexture(GL_TEXTURE_2D, VolumeRenderTexture);
-//        compositeProgram->setUniform("texForeground", 1);
-//        
-//        glClearColor(0, 0, 0, 1);
-//        glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-//        
-//        glDrawElements(GL_TRIANGLES, quad.getCountForIndex("quad"), GL_UNSIGNED_INT, (void*)quad.getStartForIndex("quad"));
+
         
 
         
         
         
-        texprgm->use();
+        shaderPrograms["TexureQuad"]->use();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0,0,fbWidth,fbHeight); // Render on the whole framebuffer, complete from the lower left corner to the upper right
         quad.bind();
         glActiveTexture(GL_TEXTURE0);
         switch (g_key) {
             case GLFW_KEY_1:
-                glBindTexture(GL_TEXTURE_2D, BackSideTexture);
+                glBindTexture(GL_TEXTURE_2D, buffertextures["BackSide"]);
 
                 break;
             case GLFW_KEY_2:
-                glBindTexture(GL_TEXTURE_2D, FrontSideTexture);
+                glBindTexture(GL_TEXTURE_2D, buffertextures["FrontSide"]);
                 break;
             case GLFW_KEY_3:
-                glBindTexture(GL_TEXTURE_2D, VolumeRenderTexture);
+                glBindTexture(GL_TEXTURE_2D, buffertextures["Volume"]);
 
                 break;
             case GLFW_KEY_4:
-                glBindTexture(GL_TEXTURE_2D, BackgroundTexture);
+                glBindTexture(GL_TEXTURE_2D, buffertextures["Background"]);
 
                 break;
             case GLFW_KEY_5:
-                glBindTexture(GL_TEXTURE_2D, CompositeTexture);
+                glBindTexture(GL_TEXTURE_2D, buffertextures["Composite"]);
                 break;
                 
             default:
-                glBindTexture(GL_TEXTURE_2D, CompositeTexture);
+                glBindTexture(GL_TEXTURE_2D, buffertextures["Composite"]);
                 break;
         }
-        texprgm->setUniform("tex", 0);
-        glClearColor(0, 0, 0, 1);
+        shaderPrograms["TexureQuad"]->setUniform("tex", 0);
+        glClearColor(1, 0, 0, 1);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         glDrawElements(GL_TRIANGLES, quad.getCountForIndex("quad"), GL_UNSIGNED_INT, (void*)quad.getStartForIndex("quad"));
