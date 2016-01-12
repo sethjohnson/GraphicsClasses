@@ -1,5 +1,5 @@
 #version 330
-layout(location = 0) out vec3 color;
+layout(location = 0) out vec4 color;
 uniform vec3 boundingBox[2];
 
 in vec4 fColor;
@@ -18,6 +18,6 @@ void main () {
     float Z = map(fPosition.z,-0.5, 0.5, 0, 1);
 
 
-    color = vec3(X,Y,Z).xyz;
+    color = vec4(X,Y,Z,1);
 
 }
