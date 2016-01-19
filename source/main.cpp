@@ -14,8 +14,7 @@
 #include <glm/ext.hpp>
 #include <glm/gtx/string_cast.hpp>
 #include <GLFW/glfw3.h>
-
-
+#include <fstream>
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
@@ -443,8 +442,8 @@ int main () {
     GLint fbWidth = dims[2];
     GLint fbHeight = dims[3];
     
-    GLint renderWidth = fbWidth*2;
-    GLint renderHeight = fbHeight*2;
+    GLint renderWidth = fbWidth*.75;
+    GLint renderHeight = fbHeight*.75;
     
     
     std::map<std::string, GLuint> buffers;
@@ -494,7 +493,7 @@ int main () {
     
     
     
-    const int dim = 16;
+    const int dim = 256;
     GLfloat * volume = new float[dim*dim*dim];
     int num = dim*dim*dim;
     int dim2D = dim*dim;
@@ -504,10 +503,7 @@ int main () {
         int layerCoord = i%dim2D;
         int column = layerCoord/dim;
         int row = layerCoord%dim;
-        float x = ((float)row-half_dim)/half_dim;
-        float y = ((float)column-half_dim)/half_dim;
-        float z = ((float)layer-half_dim)/half_dim;
-        
+
         int c = column/(dim/8.0);
         int r = row/(dim/8.0);
         int l = layer/(dim/8.0);
@@ -515,19 +511,33 @@ int main () {
         bool fill = ((c%2) ^ (r%2)) ^ (l%2);
         int item = c + r*8 + l*8*8;
         
-        if (fabs(x)<0.5 || fabs(y)<0.5 || fabs(z)<0.5) {
-            fill = 0;
-        }
-//        float dist = sqrt(x*x + y*y + z*z);
         volume[i] = item*fill;
     }
+    
 
-
+    
+    std::streampos size;
+    char * memblock;
+    
+    std::ifstream file ("/Users/sethjohnson/Documents/visualization-by-sketching/data/BRAIN/live/T1_post.ieee", std::ios::in|std::ios::binary|std::ios::ate);
+    if (file.is_open())
+    {
+        size = file.tellg();
+        memblock = new char [size];
+        file.seekg (0, std::ios::beg);
+        file.read (memblock, size);
+        file.close();
+        
+        std::cout << "the entire file content is in memory";
+        
+//        delete[] memblock;
+    }
+    else std::cout << "Unable to open file";
     
     GLuint VolumeTexture;
     glGenTextures(1, &VolumeTexture);
     glBindTexture(GL_TEXTURE_3D, VolumeTexture);
-    glTexImage3D(GL_TEXTURE_3D, 0, GL_R32F, dim, dim, dim, 0, GL_RED, GL_FLOAT, volume);
+    glTexImage3D(GL_TEXTURE_3D, 0, GL_R32F, dim, dim, dim, 0, GL_RED, GL_FLOAT, memblock);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_NEAREST);
     glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAX_LEVEL, 0);
@@ -588,7 +598,7 @@ int main () {
         glm::mat4 orientation = glm::mat4(1);
         orientation = glm::rotate(orientation, glm::radians((float)cam_theta), glm::vec3(0,1,0));
         orientation = glm::rotate(orientation, glm::radians((float)cam_phi), glm::vec3(0,0,1));
-        glm::vec4 camera_pos(3,0,0,1);
+        glm::vec4 camera_pos(1.5,0,0,1);
         camera_pos = orientation*camera_pos;
 
         
@@ -598,7 +608,7 @@ int main () {
         
         
         glm::mat4 volumeTrans = glm::translate( glm::vec3(0.0f,0.0f,0.0f));
-        //volumeTrans = glm::rotate(volumeTrans, 0, glm::vec3(0,0,0));
+        volumeTrans = glm::rotate(volumeTrans, (float)M_PI, glm::vec3(0,0,1));
         //volumeTrans = glm::translate(volumeTrans, glm::vec3(0,0,0));
         
         glm::mat4 volumeTransInv = glm::inverse(volumeTrans);
@@ -632,15 +642,14 @@ int main () {
 
         
         glm::mat4 triTrans = glm::translate( glm::vec3(0.0f,0.0f,0.0f));
-        triTrans = glm::scale(triTrans, glm::vec3(0.7,0.7,0.7));
-        triTrans = glm::rotate(triTrans,3.0f, glm::vec3(1,1,1));
-
-        triTrans = glm::translate(triTrans, glm::vec3(0,0,0));
+        triTrans = glm::scale(triTrans, glm::vec3(0.2,0.2,0.2));
+        triTrans = glm::rotate(triTrans,4.0f, glm::vec3(1,1,1));
+        triTrans = glm::translate(triTrans, glm::vec3(0.3f,0.0f,0.0f));
         
         
         shaderPrograms["XYZMap"]->setUniform("modelMatrix",*(mat4*)glm::value_ptr(triTrans));
         shape.bind();
-        glDrawElements(GL_TRIANGLES, shape.getCountForIndex("shape"), GL_UNSIGNED_INT, (void*)shape.getStartForIndex("shape"));
+        //glDrawElements(GL_TRIANGLES, shape.getCountForIndex("shape"), GL_UNSIGNED_INT, (void*)shape.getStartForIndex("shape"));
         
 
         
@@ -679,7 +688,7 @@ int main () {
         glClearColor(0.45, 0.50, 0.6, 1);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         shape.bind();
-        glDrawElements(GL_TRIANGLES, shape.getCountForIndex("shape"), GL_UNSIGNED_INT, (void*)shape.getStartForIndex("shape"));
+        //glDrawElements(GL_TRIANGLES, shape.getCountForIndex("shape"), GL_UNSIGNED_INT, (void*)shape.getStartForIndex("shape"));
 
 
         

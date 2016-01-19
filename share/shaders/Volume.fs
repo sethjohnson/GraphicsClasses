@@ -9,6 +9,31 @@ uniform sampler2D BackMap;
 uniform sampler3D VolumeMap;
 
 
+vec4 transferColor(float val)
+{
+	float red = ((int(val)%17) + 7)%5/5.0;
+	float green = ((int(val)%12) + 4)%7/7.0;
+	float blue = ((int(val)%10) + 12)%9/9.0;
+	float alpha = int(val) > 0? (1-((int(val)%13) + 12)%8/8.0)*0.3 : 0;
+	alpha = int(val) > 0? float(val)/4096.0 : 0;
+
+	return vec4(red,green,blue,alpha);
+}
+
+vec4 transferDens(float val)
+{
+	float ratio = val/2759.0;
+	if (ratio < 0.1)
+	{
+		ratio = 0;
+	}
+	float red = sin(ratio*3.14)*0.5+0.5;
+	float green = sin(ratio*3.14+2)*0.5+0.5;
+	float blue = sin(ratio*3.14+4)*0.5+0.5;
+
+	return vec4(red, green, blue,ratio*0.1);
+}
+
 void main(){
 
 	
@@ -40,23 +65,24 @@ void main(){
 		int first = 1;
 
 
-		for (int i = 0; i < stepCount; i++)
+		for (int i = 0; i < stepCount && sum.a < 1; i++)
 		{
 			position = frontPoint + i*step;
 			float val = texture(VolumeMap,position).x;
-			float red = ((int(val)%17) + 7)%5/5.0;
-			float green = ((int(val)%12) + 4)%7/7.0;
-			float blue = ((int(val)%10) + 12)%9/9.0;
-			float alpha = int(val) > 0? (1-((int(val)%13) + 12)%8/8.0)*0.3 : 0;
+
+
+
 
 
 			vec4 fgc = sum;
-			vec4 bgc = vec4(red,green,blue,alpha);
+			vec4 bgc = transferDens(val);
 	//premult
-	float bga = clamp(bgc.a,0,1);
-	float fga = clamp(fgc.a,0,1);
-	bgc = bgc*bga;
-	fgc = fgc*fga;
+			if(bgc.a > 0)
+			{
+				float bga = clamp(bgc.a,0,1);
+				float fga = clamp(fgc.a,0,1);
+				bgc = bgc*bga;
+				fgc = fgc*fga;
 
 			// vec4 newColor = (fgc * fgc.a + bgc*bgc.a*(1-fgc.a))/(fgc.a + bgc.a*(1-fgc.a));
 
@@ -64,8 +90,7 @@ void main(){
 
 	//premult
 
-			if(bgc.a > 0)
-			{
+
 				sum = vec4(fgc.rgb*fgc.a + bgc.rgb*(1-fgc.a), fgc.a + bgc.a*(1-fgc.a));
 
 				sum = fgc + bgc * (1-fga);

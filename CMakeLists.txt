@@ -16,6 +16,10 @@ set (SOURCEFILES
   source/AttributeArray.cpp
   source/WindowManager.cpp
   source/WindowManager_GLFW.cpp
+  source/Texture.cpp
+  source/Volume.cpp
+  source/Mesh.cpp
+  source/RenderBuffer.cpp
 )
 
 set (HEADERFILES
@@ -26,6 +30,10 @@ set (HEADERFILES
   include/AttributeArray.h
   include/WindowManager.h
   include/WindowManager_GLFW.h
+  include/Texture.h
+  include/Volume.h
+  include/Mesh.h
+  include/RenderBuffer.h
 )
 
 source_group("Header Files" FILES ${HEADERFILES})
