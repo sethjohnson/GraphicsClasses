@@ -17,7 +17,7 @@ class AttributeArray : public RawData {
 
     
 public:
-    AttributeArray(void * data, size_t elementSize, size_t elementCount, size_t elementDimension, DataType elementType);
+    AttributeArray(void * data, size_t elementSize, size_t elementCount, size_t elementDimension, GLenum elementType);
     ~AttributeArray();
 
 };

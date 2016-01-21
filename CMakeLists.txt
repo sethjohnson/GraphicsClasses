@@ -19,7 +19,10 @@ set (SOURCEFILES
   source/Texture.cpp
   source/Volume.cpp
   source/Mesh.cpp
-  source/RenderBuffer.cpp
+  source/BufferObject.cpp
+  source/ArrayObject.cpp
+  source/ContextObject.cpp
+
 )
 
 set (HEADERFILES
@@ -33,7 +36,9 @@ set (HEADERFILES
   include/Texture.h
   include/Volume.h
   include/Mesh.h
-  include/RenderBuffer.h
+  include/BufferObject.h
+  include/ArrayObject.h
+  include/ContextObject.h
 )
 
 source_group("Header Files" FILES ${HEADERFILES})

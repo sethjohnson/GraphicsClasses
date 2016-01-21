@@ -6,6 +6,16 @@
 using std::ifstream;
 using std::ios;
 
+void ShaderType::genObject()
+{
+    
+}
+
+void ShaderType::deleteObject()
+{
+    glDeleteShader(*m_object.get());
+}
+
 
 Shader ShaderType::CreateShaderFromFile(std::string path, GLenum shaderType)
 {
@@ -90,8 +100,4 @@ void ShaderType::compile()
 }
 
 
-const ContextPtr ShaderType::getObject()
-{
-    return m_object;
-}
 

@@ -7,5 +7,5 @@
 //
 
 #include "AttributeArray.h"
-AttributeArray::AttributeArray(void * data, size_t elementSize, size_t elementCount, size_t elementDimension, DataType elementType) : RawData(data, elementSize, elementCount, elementDimension, elementType) {}
+AttributeArray::AttributeArray(void * data, size_t elementSize, size_t elementCount, size_t elementDimension, GLenum elementType) : RawData(data, elementSize, elementCount, elementDimension, (unsigned int)elementType) {}
 

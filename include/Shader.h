@@ -4,53 +4,34 @@
 #include <map>
 #include <GLFW/glfw3.h>
 #include <OpenGL/gl3.h>
+#include <glm/glm.hpp>
 #include <vector>
 #include <string>
+#include <ContextObject.h>
+
 class ShaderType;
 
-struct vec2
-{
-    float x;
-    float y;
-};
-
-struct vec3
-{
-    float x;
-    float y;
-    float z;
-};
-
-struct vec4
-{
-    float x;
-    float y;
-    float z;
-    float w;
-};
-struct mat4
-{
-    vec4 cols[4];
-};
-
-typedef std::shared_ptr<GLuint> ContextPtr;
 typedef std::shared_ptr<ShaderType> Shader;
 
-class ShaderType {
+class ShaderType : public ContextObject {
+
+public:
+    static Shader CreateShaderFromText(std::string contents, GLenum shaderType);
+    static Shader CreateShaderFromFile(std::string path, GLenum shaderType);
+    virtual void genObject();
+
+    virtual void deleteObject();
+    
+    const std::string getContents();
+    void compile();
+    
+private:
     std::string m_content;
     static std::string readFile(std::string fileName);
     static ContextPtr compileShader(std::string shaderText, GLenum shaderType);
     GLenum m_shaderType;
-    ContextPtr m_object;
-    ShaderType() : m_object(new GLuint(0)) {}
-public:
+    ShaderType() : ContextObject(){}
     
-    static Shader CreateShaderFromText(std::string contents, GLenum shaderType);
-    static Shader CreateShaderFromFile(std::string path, GLenum shaderType);
-
-    const std::string getContents();
-    void compile();
-    const ContextPtr getObject();
 };
 
 #endif

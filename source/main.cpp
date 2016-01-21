@@ -1,3 +1,4 @@
+#define GLM_SWIZZLE
 
 #include <GL/glew.h> // include GLEW and new version of GL on Windows
 #include <stdio.h>
@@ -6,7 +7,6 @@
 #include "GeometryArray.h"
 #include "WindowManager_GLFW.h"
 #include <iostream>
-#define GLM_SWIZZLE
 #include <glm/glm.hpp>
 #include <glm/gtc/matrix_access.hpp>
 #include <glm/gtc/matrix_transform.hpp>
@@ -18,15 +18,18 @@
 #include <assimp/Importer.hpp>
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
+#include <Mesh.h>
+
 // assimp include files. These three are usually needed.
 //#include <assimp/Importer.hpp>	//OO version Header!
 //#include <assimp/PostProcess.h>
 //#include <assimp/Scene.h>
 
-GeometryArray triangle;
-GeometryArray quad;
-GeometryArray cube;
-GeometryArray shape;
+//GeometryArray triangle;
+Mesh * quad;
+Mesh * cube;
+Mesh * shape;
+Mesh * pile;
 
 int g_key;
 
@@ -50,119 +53,6 @@ mousebutton_callback(GLFWwindow* window, int button, int action, int mods) {
     mouse_button = action;
 }
 
-void loadModel(std::string path)
-{
-//    std::vector<MeshRef> meshes;
-    
-    Assimp::Importer importer;
-    const aiScene *scene = importer.ReadFile(path, aiProcess_Triangulate | aiProcess_FlipUVs);
-    
-    if(!scene || scene->mFlags == AI_SCENE_FLAGS_INCOMPLETE || !scene->mRootNode)
-    {
-        std::cout << "ERROR::ASSIMP::" << importer.GetErrorString() << std::endl;
-//        return meshes;
-    }
-    
-    std::cout << scene->mNumMeshes << std::endl;
-    
-    for (int meshNum = 0; meshNum < scene->mNumMeshes; meshNum++)
-    {
-        aiMesh *mesh = scene->mMeshes[meshNum];
-        
-        
-        std::vector<glm::vec3> vertices;
-        std::vector<glm::vec3> normals;
-        
-        std::vector<glm::vec2> texCoords;
-        
-        bool hasTexCoords = mesh->mTextureCoords[0];
-        
-        for (int i = 0; i < mesh->mNumVertices; i++) {
-            glm::vec3 vert;
-            vert.x = mesh->mVertices[i].x;
-            vert.y = mesh->mVertices[i].y;
-            vert.z = mesh->mVertices[i].z;
-            vertices.push_back(vert);
-            
-            if (mesh->HasNormals())
-            {
-                glm::vec3 norm;
-                norm.x = mesh->mNormals[i].x;
-                norm.y = mesh->mNormals[i].y;
-                norm.z = mesh->mNormals[i].z;
-                normals.push_back(norm);
-            }
-            
-            if (hasTexCoords)
-            {
-                texCoords.push_back(glm::vec2(mesh->mTextureCoords[0][i].x, mesh->mTextureCoords[0][i].y));
-            }
-        }
-        
-        std::vector<unsigned int> indices;
-        for(int i = 0; i < mesh->mNumFaces; i++)
-        {
-            aiFace face = mesh->mFaces[i];
-            // Retrieve all indices of the face and store them in the indices vector
-            for(int j = 0; j < face.mNumIndices; j++)
-                indices.push_back(face.mIndices[j]);
-        }
-        
-        std::string directory = "";
-        int lastFolderIndex = path.find_last_of('/');
-        if (lastFolderIndex < 0)
-        {
-            lastFolderIndex = path.find_last_of('\\');
-        }
-        
-        if (lastFolderIndex >= 0)
-        {
-            directory = path.substr(0, lastFolderIndex+1);
-        }
-        
-        shape.addIndex(indices, "shape");
-        shape.addAttribute(vertices, ATTRIB_POSITION, 3, TYPE_FLOAT);
-
-        if (mesh->HasNormals())
-        {
-            shape.addAttribute(normals, ATTRIB_NORMAL, 3, TYPE_FLOAT);
-
-        }
-
-        
-        if (hasTexCoords)
-        {
-            shape.addAttribute(texCoords, ATTRIB_TEXCOORD, 2, TYPE_FLOAT);
-        }
-        
-        shape.generateObjects();
-        
-        shape.bind();
-        
-
-        shape.loadAttributes();
-        shape.loadIndices();
-        
-        shape.bind();
-//        if (mesh->mMaterialIndex >= 0)
-//        {
-//            aiMaterial *material = scene->mMaterials[mesh->mMaterialIndex];
-//            int texCount = material->GetTextureCount(aiTextureType_DIFFUSE);
-//            std::cout << texCount << " count" << std::endl;
-//            if (texCount > 0)
-//            {
-//                aiString str;
-//                material->GetTexture(aiTextureType_DIFFUSE, 0, &str);
-//                std::cout << std::string(str.C_Str()) << std::endl;
-//                finalMesh->setTexture(TextureRef(new SOILTexture(directory + std::string(str.C_Str()))));
-//            }
-//        }
-//        
-//        meshes.push_back(finalMesh);
-    }
-
-}
-
 int main () {
     // start GL context and O/S window using the GLFW helper library
     WindowManager *window = new WindowManagerGLFW();
@@ -183,212 +73,14 @@ int main () {
     glClampColor(GL_CLAMP_VERTEX_COLOR, GL_FALSE);
     glClampColor(GL_CLAMP_FRAGMENT_COLOR, GL_FALSE);
     
-    /* OTHER STUFF GOES HERE NEXT */
-    vec3 triangle_vertices_array[] = {
-        {0.0f,  0.5f,  0.0f},
-        {0.5f, -0.5f,  0.0f},
-        {-0.5f, -0.5f,  0.0f}
-    };
-    vec3 triangle_color_array[] = {
-        {0.5,  0.5,  0.5},
-        {0.6,  0.6,  0.6},
-        {0.4,  0.4f,  0.4}
-    };
-    GLuint triangle_index_array[] = {
-        0,1,2
-    };
+
     
     
+    pile = Mesh::CreateMeshFromFile("/Users/sethjohnson/pile.obj");
     
-    glm::vec3 v[] = {
-        glm::vec3(0.5f, 0.5f, 0.5f ),
-        glm::vec3(-0.5f, 0.5f, 0.5f),
-        glm::vec3(-0.5f,-0.5f, 0.5f),
-        glm::vec3(0.5f,-0.5f, 0.5f),
-        glm::vec3(0.5f,-0.5f,-0.5f),
-        glm::vec3(0.5f, 0.5f,-0.5f),
-        glm::vec3(-0.5f, 0.5f,-0.5f),
-        glm::vec3(-0.5f,-0.5f,-0.5f)
-    };
-    glm::vec3 n[] = {
-        glm::vec3(0,0,1),
-        glm::vec3(1,0,0),
-        glm::vec3(0,1,0),
-        glm::vec3(-1,0,0),
-        glm::vec3(0,-1,0),
-        glm::vec3(0,0,-1)
-    };
-    glm::vec3 c[] = {
-        glm::vec3(0.5,0.5,0.5),
-        glm::vec3(0.5,0.5,1),
-        glm::vec3(0.5,0.6,0.5),
-        glm::vec3(0.5, 0.75, 1),
-        glm::vec3(1, 0.6, 0.5),
-        glm::vec3(1,0.5,1),
-        glm::vec3(1, 0.6, 0.5),
-        glm::vec3(1, 0.6, 1)
-    };
-    
-    glm::vec3 vertices_array[]  = {
-        v[0], v[1], v[2], v[3],
-        v[0], v[3], v[4], v[5],
-        v[0], v[5], v[6], v[1],
-        v[1], v[6], v[7], v[2],
-        v[7], v[4], v[3], v[2],
-        v[4], v[7], v[6], v[5]
-    };
-    
-    glm::vec3 normals_array[] = {
-        n[0], n[0], n[0], n[0],
-        n[1], n[1], n[1], n[1],
-        n[2], n[2], n[2], n[2],
-        n[3], n[3], n[3], n[3],
-        n[4], n[4], n[4], n[4],
-        n[5], n[5], n[5], n[5]
-    };
-    
-    glm::vec3 colors_array[] = {
-#if 0
-        c[0], c[1], c[2], c[3],
-        c[0], c[3], c[4], c[5],
-        c[0], c[5], c[6], c[1],
-        c[1], c[6], c[7], c[2],
-        c[7], c[4], c[3], c[2],
-        c[4], c[7], c[6], c[5]
-#elif 1
-        c[0], c[0], c[0], c[0],
-        c[1], c[1], c[1], c[1],
-        c[2], c[2], c[2], c[2],
-        c[3], c[3], c[3], c[3],
-        c[4], c[4], c[4], c[4],
-        c[5], c[5], c[5], c[5]
-#else
-        c[7], c[7], c[7], c[7],
-        c[7], c[7], c[7], c[7],
-        c[7], c[7], c[7], c[7],
-        c[7], c[7], c[7], c[7],
-        c[7], c[7], c[7], c[7],
-        c[7], c[7], c[7], c[7]
-        
-#endif
-    };
-    
-    GLuint indices_array[] = {
-        0, 1, 2, // front
-        2, 3, 0,
-        4, 5, 6, // right
-        6, 7, 4,
-        8, 9, 10, // top
-        10, 11, 8,
-        12, 13, 14, // left
-        14, 15, 12,
-        16, 17, 18, // bottom
-        18, 19, 16,
-        20, 21, 22, // back
-        22, 23, 20
-    };
-    
-    
-    vec3 quad_vertices_array[] = {
-        {-1.0f,  -1.f,  0.0f},
-        {-1.0f, 1.f,  0.0f},
-        { 1.0f, 1.f,  0.0f},
-        { 1.0f, -1.f,  0.0f}
-    };
-    
-    vec2 quad_tex_array[] = {
-        {0.0f,  0.f},
-        {0.0f, 1.f},
-        { 1.0f, 1.f},
-        { 1.0f, 0.0f}
-    };
-    GLuint quad_index_array[] = {
-        0,1,2,2,3,0
-    };
-    
-    std::vector<vec3> triangle_vertices;
-    std::vector<vec3> triangle_colors;
-    
-    std::vector<GLuint> triangle_indicies;
-    
-    triangle_vertices.assign(triangle_vertices_array, triangle_vertices_array+ sizeof(triangle_vertices_array)/ sizeof(triangle_vertices_array[0]));
-    triangle_colors.assign(triangle_color_array, triangle_color_array+ sizeof(triangle_color_array)/ sizeof(triangle_color_array[0]));
-    
-    triangle_indicies.assign(triangle_index_array, triangle_index_array+ sizeof(triangle_index_array)/ sizeof(triangle_index_array[0]));
-    
-    
-    
-    triangle.generateObjects();
-    
-    triangle.bind();
-    
-    triangle.addIndex(triangle_indicies, "tri");
-    triangle.addAttribute(triangle_vertices, ATTRIB_POSITION, 3, TYPE_FLOAT);
-    triangle.addAttribute(triangle_colors, ATTRIB_COLOR, 3, TYPE_FLOAT);
-    
-    
-    triangle.loadAttributes();
-    triangle.loadIndices();
-    
-    triangle.bind();
-    
-    
-    
-    std::vector<vec3> quad_vertices;
-    std::vector<vec2> quad_tex;
-    
-    std::vector<GLuint> quad_indicies;
-    
-    quad_vertices.assign(quad_vertices_array, quad_vertices_array+ sizeof(quad_vertices_array)/ sizeof(quad_vertices_array[0]));
-    quad_tex.assign(quad_tex_array, quad_tex_array+ sizeof(quad_tex_array)/ sizeof(quad_tex_array[0]));
-    
-    quad_indicies.assign(quad_index_array, quad_index_array+ sizeof(quad_index_array)/ sizeof(quad_index_array[0]));
-    
-    
-    
-    quad.generateObjects();
-    
-    quad.bind();
-    
-    quad.addIndex(quad_indicies, "quad");
-    quad.addAttribute(quad_vertices, ATTRIB_POSITION, 3, TYPE_FLOAT);
-    quad.addAttribute(quad_tex, ATTRIB_TEXCOORD, 2, TYPE_FLOAT);
-    
-    
-    quad.loadAttributes();
-    quad.loadIndices();
-    
-    quad.bind();
-    
-    
-    std::vector<vec3> cube_vertices;
-    std::vector<vec3> cube_color;
-    
-    std::vector<GLuint> cube_indicies;
-    
-    cube_vertices.assign((vec3*)vertices_array, (vec3*)vertices_array+ sizeof(vertices_array)/ sizeof(vertices_array[0]));
-    cube_color.assign((vec3*)colors_array, (vec3*)colors_array+ sizeof(colors_array)/ sizeof(colors_array[0]));
-    
-    cube_indicies.assign(indices_array, indices_array+ sizeof(indices_array)/ sizeof(indices_array[0]));
-    
-    
-    
-    cube.generateObjects();
-    
-    cube.bind();
-    
-    cube.addIndex(cube_indicies, "cube");
-    cube.addAttribute(cube_vertices, ATTRIB_POSITION, 3, TYPE_FLOAT);
-    cube.addAttribute(cube_color, ATTRIB_COLOR, 3, TYPE_FLOAT);
-    
-    
-    cube.loadAttributes();
-    cube.loadIndices();
-    
-    cube.bind();
-    
-    
-    loadModel("/Users/sethjohnson/Desktop/monkey.obj");
+    shape = Mesh::CreateMeshFromFile("/Users/sethjohnson/Desktop/cube.obj");
+    cube = Mesh::CreateMeshFromFile("/Users/sethjohnson/Desktop/cube.obj");
+    quad = Mesh::CreateXYUnitQuad();
     
     std::map<std::string, Shader> shaders;
     
@@ -628,7 +320,6 @@ int main () {
         // Render to our framebuffer
         glViewport(0,0,renderWidth,renderHeight); // Render on the whole framebuffer, complete from the lower left corner to the upper right
         
-        cube.bind();
         glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, buffertextures["BackSide"], 0);
         
         glBindFramebuffer(GL_FRAMEBUFFER, buffers["BackSide"]);
@@ -637,7 +328,7 @@ int main () {
         
         glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
         
-        glDrawElements(GL_TRIANGLES, cube.getCountForIndex("cube"), GL_UNSIGNED_INT, (void*)cube.getStartForIndex("cube"));
+        cube->draw();
         glDisable(GL_CULL_FACE);
 
         
@@ -648,8 +339,7 @@ int main () {
         
         
         shaderPrograms["XYZMap"]->setUniform("modelMatrix",*(mat4*)glm::value_ptr(triTrans));
-        shape.bind();
-        //glDrawElements(GL_TRIANGLES, shape.getCountForIndex("shape"), GL_UNSIGNED_INT, (void*)shape.getStartForIndex("shape"));
+        shape->draw();
         
 
         
@@ -660,7 +350,6 @@ int main () {
         glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
         
         
-        cube.bind();
         
         shaderPrograms["XYZMap"]->setUniform("modelMatrix",*(mat4*)&volumeTrans);
         glCullFace(GL_BACK);
@@ -668,8 +357,7 @@ int main () {
 
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glDrawElements(GL_TRIANGLES, cube.getCountForIndex("cube"), GL_UNSIGNED_INT, (void*)cube.getStartForIndex("cube"));
-        
+        cube->draw();
         
         
         glDisable(GL_CULL_FACE);
@@ -687,8 +375,8 @@ int main () {
 
         glClearColor(0.45, 0.50, 0.6, 1);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
-        shape.bind();
-        //glDrawElements(GL_TRIANGLES, shape.getCountForIndex("shape"), GL_UNSIGNED_INT, (void*)shape.getStartForIndex("shape"));
+        shape->draw();
+
 
 
         
@@ -698,7 +386,6 @@ int main () {
         glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, buffertextures["Volume"], 0);
 
         glViewport(0,0,renderWidth,renderHeight); // Render on the whole framebuffer, complete from the lower left corner to the upper right
-        quad.bind();
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, buffertextures["BackSide"]);
         shaderPrograms["Volume"]->setUniform("BackMap", 0);
@@ -714,7 +401,7 @@ int main () {
         glClearColor(0, 0, 0, 1);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
-        glDrawElements(GL_TRIANGLES, quad.getCountForIndex("quad"), GL_UNSIGNED_INT, (void*)quad.getStartForIndex("quad"));
+        quad->draw();
         
         
         
@@ -724,7 +411,6 @@ int main () {
         glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, buffertextures["Composite"], 0);
         
         glViewport(0,0,renderWidth,renderHeight); // Render on the whole framebuffer, complete from the lower left corner to the upper right
-        quad.bind();
         glActiveTexture(GL_TEXTURE0);
         glBindTexture(GL_TEXTURE_2D, buffertextures["Background"]);
         shaderPrograms["Composite"]->setUniform("texBackground", 0);
@@ -736,7 +422,7 @@ int main () {
         glClearColor(1, 0, 0, 1);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        glDrawElements(GL_TRIANGLES, quad.getCountForIndex("quad"), GL_UNSIGNED_INT, (void*)quad.getStartForIndex("quad"));
+        quad->draw();
 
 
         
@@ -747,7 +433,6 @@ int main () {
         shaderPrograms["TexureQuad"]->use();
         glBindFramebuffer(GL_FRAMEBUFFER, 0);
         glViewport(0,0,fbWidth,fbHeight); // Render on the whole framebuffer, complete from the lower left corner to the upper right
-        quad.bind();
         glActiveTexture(GL_TEXTURE0);
         switch (g_key) {
             case GLFW_KEY_1:
@@ -777,7 +462,7 @@ int main () {
         glClearColor(1, 0, 0, 1);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
-        glDrawElements(GL_TRIANGLES, quad.getCountForIndex("quad"), GL_UNSIGNED_INT, (void*)quad.getStartForIndex("quad"));
+        quad->draw();
 
         
         window->swapBuffers();

@@ -7,7 +7,7 @@ RawData::RawData() : m_data(nullptr)
     
 }
 
-RawData::RawData(const void * data, size_t elementSize, size_t elementCount, size_t elementDimension, DataType elementType) : RawData() {
+RawData::RawData(const void * data, size_t elementSize, size_t elementCount, size_t elementDimension, unsigned int elementType) : RawData() {
     
     m_elementSize = (elementSize);
     m_elementCount = (elementCount);
@@ -37,7 +37,7 @@ std::shared_ptr<char> RawData::getData()
     return m_data;
 }
 
-DataType RawData::getElementType()
+unsigned int RawData::getElementType()
 {
     return m_elementType;
 }

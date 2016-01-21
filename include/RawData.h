@@ -3,12 +3,7 @@
 
 #include <iostream>
 
-enum DataType {
-    TYPE_CHAR,
-    TYPE_INT,
-    TYPE_FLOAT,
-    TYPE_BYTE
-};
+
 
 class RawData {
 protected:
@@ -16,17 +11,17 @@ protected:
     size_t m_elementSize;
     size_t m_elementCount;
     size_t m_elementDimension;
-    DataType m_elementType;
+    unsigned int m_elementType;
 public:
     RawData();
-    RawData(const void * data, size_t elementSize, size_t elementCount, size_t elementDimension, DataType elementType);
+    RawData(const void * data, size_t elementSize, size_t elementCount, size_t elementDimension, unsigned int elementType);
     
     ~RawData();
     virtual void setData(const void* value);
     virtual size_t getElementSize();
     virtual size_t getElementCount();
     virtual size_t getElementDimension();
-    virtual DataType getElementType();
+    virtual unsigned int getElementType();
     virtual std::shared_ptr<char> getData();
     
 };

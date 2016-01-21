@@ -5,10 +5,15 @@
 #include <GL/glew.h>
 #include "Shader.h"
 #include <list>
+#include <ContextObject.h>
+using glm::vec2;
+using glm::vec3;
+using glm::vec4;
+using glm::mat4;
 
 
 
-class ShaderProgram
+class ShaderProgram : public ContextObject
 {
 public:
     ContextPtr getObject();
@@ -26,7 +31,8 @@ public:
 protected:
     ContextPtr m_object;
     std::list<Shader> m_shaders;
-    
+    virtual void deleteObject() {}
+    virtual void genObject() {}
 };
 
 #endif
