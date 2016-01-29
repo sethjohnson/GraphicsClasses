@@ -103,6 +103,9 @@ include_directories(lib/glew/include)
 set(assimp_checkout_Dir ${CMAKE_SOURCE_DIR}/dependencies/assimp)
 make_directory(${assimp_checkout_Dir})
 
+set(dcmtk_checkout_Dir ${CMAKE_SOURCE_DIR}/dependencies/dcmtk)
+
+
 set(soil_dl_Dir ${CMAKE_SOURCE_DIR}/dependencies/SOIL)
 make_directory(${soil_dl_Dir})
 
@@ -111,11 +114,19 @@ include(ExternalProject)
 set(assimp_PREFIX "${assimp_checkout_Dir}")
 set(assimp_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/assimp")
 
+set(dcmtk_PREFIX "${dcmtk_checkout_Dir}")
+set(dcmtk_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/dcmtk")
+
 set(soil_PREFIX "${soil_dl_Dir}")
 set(soil_INSTALL_DIR "${CMAKE_INSTALL_PREFIX}/SOIL")
 
 set(assimp_CMAKE_ARGS -DCMAKE_INSTALL_PREFIX=${assimp_INSTALL_DIR} -DBUILD_SHARED_LIBS=OFF -DASSIMP_BUILD_ASSIMP_TOOLS=OFF -DASSIMP_BUILD_SAMPLES=OFF -DASSIMP_ENABLE_BOOST_WORKAROUND=ON -DASSIMP_BUILD_TESTS=OFF )
 set(assimp_DIR "${assimp_INSTALL_DIR}")
+
+
+set(dcmtk_DIR "${dcmtk_INSTALL_DIR}")
+
+
 set(soil_DIR "${soil_INSTALL_DIR}")
 
     if (${CMAKE_SYSTEM_NAME} MATCHES "Darwin")
@@ -149,6 +160,15 @@ PATCH_COMMAND ${soil_PATCH}
 UPDATE_COMMAND ""
 )
 
+ExternalProject_add(dcmtk
+PREFIX ${dcmtk_PREFIX}
+URL ftp://dicom.offis.de/pub/dicom/offis/software/dcmtk/dcmtk360/dcmtk-3.6.0.zip
+INSTALL_DIR ${dcmtk_INSTALL_DIR}
+CMAKE_ARGS ${dcmtk_CMAKE_ARGS}
+UPDATE_COMMAND ""
+)
+
+
 set_property(TARGET SOIL PROPERTY FOLDER "Dependencies")
 
 
@@ -156,12 +176,18 @@ set_property(TARGET SOIL PROPERTY FOLDER "Dependencies")
 #INCLUDE_DIRECTORIES(${ZLIB_INCLUDE_DIR})
 
 set(ASSIMP_INCLUDE_DIR ${assimp_INSTALL_DIR}/include CACHE INTERNAL "Directory of assimp header files")
+set(DCMTK_INCLUDE_DIR ${dcmtk_INSTALL_DIR}/include CACHE INTERNAL "Directory of dcmtk header files")
+
 set(SOIL_INCLUDE_DIR ${soil_INSTALL_DIR}/include CACHE INTERNAL "Directory of SOIL header files")
 if(MSVC)
 set(ASSIMP_LIBRARY debug ${assimp_INSTALL_DIR}/lib/assimpd.lib optimized ${assimp_INSTALL_DIR}/lib/assimp.lib CACHE INTERNAL "assimp lib file")
+#set(DCMTK_LIBRARY debug ${dcmtk_INSTALL_DIR}/lib/dcmtkd.lib optimized ${dcmtk_INSTALL_DIR}/lib/dcmtk.lib CACHE INTERNAL "assimp lib file")
+
 set(SOIL_LIBRARY ${soil_INSTALL_DIR}/lib/SOIL.lib CACHE INTERNAL "SOIL lib file")
 else()
 set(ASSIMP_LIBRARY ${assimp_INSTALL_DIR}/lib/libassimp.a CACHE INTERNAL "assimp lib file")
+#set(DCMTK_LIBRARY /usr/local/Cellar/dcmtk/3.6.1-20150924/lib)
+link_directories(/usr/local/Cellar/dcmtk/3.6.1-20150924/lib)
 set(SOIL_LIBRARY ${soil_INSTALL_DIR}/lib/libSOIL.a CACHE INTERNAL "SOIL lib file")
 endif()
 find_package(ZLIB)
@@ -245,7 +271,33 @@ endif()
 # Build Target
 add_executable ( ${PROJECT_NAME} ${HEADERFILES} ${SOURCEFILES} )
 
-target_link_libraries(${PROJECT_NAME} ${LIBASSIMP_LIBRARIES} ${SOIL_LIBRARY} ${GLFW_LIBRARY} glew ${OPENGL_LIBRARIES} ${LIBS_ALL})
+target_link_libraries(${PROJECT_NAME} ${LIBASSIMP_LIBRARIES} ${SOIL_LIBRARY} ${DCMTK_LIBRARY}
+
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libcmr.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmdata.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmdsig.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmfg.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmimage.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmimgle.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmiod.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmjpeg.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmjpls.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmnet.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmpstat.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmqrdb.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmrt.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmseg.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmsr.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmtls.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libdcmwlm.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libi2d.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libijg8.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libijg12.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libijg16.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/liboflog.a
+/usr/local/Cellar/dcmtk/3.6.1-20150924/lib/libofstd.a
+/usr/lib/libiconv.dylib
+${GLFW_LIBRARY} glew ${OPENGL_LIBRARIES} ${LIBS_ALL} )
 
 add_dependencies( ${PROJECT_NAME} glfw glew assimp SOIL)
 #install(DIRECTORY ${PROJECT_NAME}/include/ DESTINATION include)
@@ -254,3 +306,13 @@ install( TARGETS ${PROJECT_NAME}
          LIBRARY DESTINATION lib
          ARCHIVE DESTINATION lib
          RUNTIME DESTINATION bin)
+
+
+
+#typical appraoch for linking with a new lib
+
+#include_directories(../mylibinclude ${INCLUDE_DIRECTORIES))
+#link_directories(../mylib ${LINK_DIRECTORIES))
+#target_link_libraries(${PROJECT_NAME} mylib.a ${LIBS_ALL})
+
+

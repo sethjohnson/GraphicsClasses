@@ -19,6 +19,8 @@
 #include <assimp/scene.h>
 #include <assimp/postprocess.h>
 #include <Mesh.h>
+#include <array>
+#include "dcmtk/dcmimgle/dcmimage.h"
 
 // assimp include files. These three are usually needed.
 //#include <assimp/Importer.hpp>	//OO version Header!
@@ -52,6 +54,144 @@ static void
 mousebutton_callback(GLFWwindow* window, int button, int action, int mods) {
     mouse_button = action;
 }
+
+GLuint
+setupTexture(GLubyte* texels, GLubyte* scalarTexels, bool color, int imgWidth, int imgHeight, int numImgs)
+{
+    GLuint _textureID;
+    if(color) {
+        glEnable(GL_TEXTURE_3D);
+        glGenTextures(1, &_textureID);
+        glBindTexture(GL_TEXTURE_3D, _textureID);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexImage3D(GL_TEXTURE_3D, 0, GL_RGBA, imgWidth+2, imgHeight+2, numImgs+2, 1, GL_RGBA, GL_UNSIGNED_BYTE, texels);
+        glBindTexture(GL_TEXTURE_3D, NULL);
+        glDisable(GL_TEXTURE_3D);
+    }
+    else {
+        glEnable(GL_TEXTURE_3D);
+        glGenTextures(1, &_textureID);
+        glBindTexture(GL_TEXTURE_3D, _textureID);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MIN_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_MAG_FILTER, GL_LINEAR);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_S, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_T, GL_CLAMP_TO_BORDER);
+        glTexParameteri(GL_TEXTURE_3D, GL_TEXTURE_WRAP_R, GL_CLAMP_TO_BORDER);
+        glPixelStorei(GL_UNPACK_ALIGNMENT, 1);
+        glTexImage3D(GL_TEXTURE_3D, 0, GL_LUMINANCE_ALPHA, imgWidth+2, imgHeight+2, numImgs+2, 1, GL_LUMINANCE_ALPHA, GL_UNSIGNED_BYTE, texels);
+        glBindTexture(GL_TEXTURE_3D, NULL);
+        glDisable(GL_TEXTURE_3D);
+    }
+    
+    return _textureID;
+}
+
+
+void
+loadDicoms(std::vector<std::string> files, GLubyte * data, glm::dvec3 & dimensions)
+{
+//    _loadedFilePaths = files;
+//    _loadedFromDicom = true;
+//    _loadedWithColor = false;
+    int numImgs = files.size();
+    int curImageInd = 0;
+    
+    GLubyte *pixelData;
+    DicomImage *image = new DicomImage(files[0].c_str());
+    if (image != NULL) {
+        if(image->getStatus() == EIS_Normal) {
+            if(image->isMonochrome()) {
+                image->setMinMaxWindow();
+                pixelData = (Uint8 *)(image->getOutputData(8 /* bits */));
+            }
+        }
+        else {
+            std::cerr << "Error: cannot load DICOM image (" << DicomImage::getString(image->getStatus()) << ")" << std::endl;
+        }
+    }
+    
+    int width = image->getWidth();
+    int height = image->getHeight();
+    delete image;
+    
+    int volX = width+2;
+    int volZ = height+2;
+    int volY = numImgs+2;
+    
+    GLubyte *texels = (GLubyte*)malloc((volX)*(volZ)*(volY)*2);
+    GLubyte *scalarTexels = (GLubyte*)malloc((width)*(height)*(numImgs));
+    GLubyte col;
+    
+    //clear the buffer to begin with
+    for(int i = 0; i < (volX)*(volZ)*(volY)*2; i++) {
+        texels[i] = 0;
+    }
+    
+    for(int j = 0; j < volX; j++) {
+        for(int k = 0; k < volZ; k++) {
+            int index = ((0*volZ+k) * volX + j) * 2;
+            texels[index] = 0;
+            texels[index+1] = 0;
+            
+        }
+    }
+    for(int j = 0; j < volX; j++) {
+        for(int k = 0; k < volZ; k++) {
+            int index = (((volY-1)*volZ+k) * volX + j) * 2;
+            texels[index] = 0;
+            texels[index+1] = 0;
+            
+        }
+    }
+    
+    
+    for(int i = 1; i < volY-1; i++) {
+        image = new DicomImage(files[curImageInd].c_str());
+        if (image != NULL) {
+            if (image->getStatus() == EIS_Normal) {
+                if (image->isMonochrome()) {
+                    image->setMinMaxWindow();
+                    pixelData = (Uint8 *)(image->getOutputData(8 /* bits */));
+                }
+            }
+            else {
+                std::cerr << "Error: cannot load DICOM image (" << DicomImage::getString(image->getStatus()) << ")" << std::endl;
+            }
+        }
+        for(int j = 0; j < volX; j++) {
+            for(int k = 0; k < volZ; k++) {
+                int index = (((volY-(volY-i))*volZ+k) * volX + j) * 2;
+                if(j == 0 || j == (volX-1) || k == 0 || k == (volZ-1)) {
+                    texels[index] = 0;
+                    texels[index+1] = 0;
+                }
+                else {
+                    Uint8 col = pixelData[((height-1)-(k-1))*width + (j-1)];
+                    texels[index] = col;
+                    texels[index+1] = 255;
+                    
+                    int scalarIndex = (((((height-1)-(k-1)))*numImgs+(i-1)) * width + (j-1));
+                    scalarTexels[scalarIndex] = col;
+                }
+            }
+        }
+        curImageInd++;
+        delete image;
+    }
+    
+    dimensions.x = width;
+    dimensions.z = numImgs;
+    dimensions.y = height;
+    setupTexture(texels, scalarTexels, false, width, height, numImgs); 
+    free(texels);
+}
+
+
 
 int main () {
     // start GL context and O/S window using the GLFW helper library
@@ -290,7 +430,7 @@ int main () {
         glm::mat4 orientation = glm::mat4(1);
         orientation = glm::rotate(orientation, glm::radians((float)cam_theta), glm::vec3(0,1,0));
         orientation = glm::rotate(orientation, glm::radians((float)cam_phi), glm::vec3(0,0,1));
-        glm::vec4 camera_pos(1.5,0,0,1);
+        glm::vec4 camera_pos(1,0,0,1);
         camera_pos = orientation*camera_pos;
 
         
@@ -323,14 +463,14 @@ int main () {
         glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, buffertextures["BackSide"], 0);
         
         glBindFramebuffer(GL_FRAMEBUFFER, buffers["BackSide"]);
-        glClearColor(1, 0, 0, 0);
+        glClearColor(0, 0, 0, 0);
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
         
         glDrawBuffers(1, DrawBuffers); // "1" is the size of DrawBuffers
         
         cube->draw();
-        glDisable(GL_CULL_FACE);
-
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);
         
         glm::mat4 triTrans = glm::translate( glm::vec3(0.0f,0.0f,0.0f));
         triTrans = glm::scale(triTrans, glm::vec3(0.2,0.2,0.2));
@@ -342,7 +482,7 @@ int main () {
         shape->draw();
         
 
-        
+
         
         glBindFramebuffer(GL_FRAMEBUFFER, buffers["FrontSide"]);
         glFramebufferTexture(GL_FRAMEBUFFER, GL_COLOR_ATTACHMENT0, buffertextures["FrontSide"], 0);
@@ -352,8 +492,8 @@ int main () {
         
         
         shaderPrograms["XYZMap"]->setUniform("modelMatrix",*(mat4*)&volumeTrans);
-        glCullFace(GL_BACK);
-        glClearColor(1, 0, 0, 0);
+        glEnable(GL_CULL_FACE);
+        glCullFace(GL_BACK);        glClearColor(0, 0, 0, 0);
 
         glClear (GL_COLOR_BUFFER_BIT | GL_DEPTH_BUFFER_BIT);
 
